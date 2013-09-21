@@ -17,7 +17,7 @@ log.o: log_intf.h
 	gcc -fPIC -c log.c 
 
 clean:
-	rm -rf *.o *.so  *.out test
+	rm -rf *.o *.so  *.out test *.log
 
 ####################TESTAPP###############################h
 

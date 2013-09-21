@@ -51,34 +51,77 @@ cleanup:
 
 }
 
+void
+snprintf_level(char *buf, int level)
+{
+	switch (level) {
+	case LOG_CRITICAL:
+		snprintf(buf, 20,  "CRITICAL");
+		break;
+	case LOG_ERROR:
+		snprintf(buf, 20, "ERROR");
+		break;
+	case LOG_WARNING:
+		snprintf(buf, 20, "WARNING");
+		break;
+	case LOG_DEBUG:
+		snprintf(buf, 20, "DEBUG");
+		break;
+	case LOG_INFO:
+		snprintf(buf, 20, "INFO");
+		break;
+	case LOG_VERBOSE:
+		snprintf(buf, 20, "VERBOSE");
+		break;
+	default:
+		snprintf(buf, 20, "UNKNOWN");
+	} 
+}
+
+void 
+snprintf_log_entry(char *str, log_t *log,
+	int entry_num)
+{
+	assert(str);
+	assert(log);
+	assert((entry_num >= 0) && (entry_num < log->num_entries));
+	
+	int i = entry_num;
+
+	time_t 	now_time;
+	struct tm *now_tm;
+	char tmbuf[64], buf[64], level_buf[20];
+
+	now_time = (log->entries[i]).time.tv_sec;
+	now_tm = localtime(&now_time);
+	strftime(tmbuf, (sizeof tmbuf),
+		"%Y-%m-%d %H:%M:%S",
+		now_tm);
+	/* to get microseconds */
+	snprintf(buf, sizeof buf, "%s.%06d >>",
+		tmbuf, log->entries[i].time.tv_usec);
+	snprintf_level((char *)&level_buf, 
+		(log->entries[i]).level);
+	
+	snprintf(str, LOG_LEN_ENTRY, 
+		"%s: %s %s\n", level_buf,
+                 buf, log->entries[i].log_str);
+
+}
+
 void 
 log_print_all(log_t *log, int level)
 {
 	int 	i = 0;
-	time_t 	now_time;
-	struct tm *now_tm;
-	char tmbuf[64], buf[64];
 
 	assert(log);
+	char str[LOG_LEN_ENTRY];
 
 	for (i = 0; i < LOG_MAX_ENTRIES; i++) {
 		if ((log->entries[i]).level != level)
 			continue;
-
-		printf("\n");
-		//snprintf(buf, "%s", 2, 20);
-#if 0
-		now_time = (log->entries[i]).time.tv_sec;
-		now_tm = localtime(&now_time);
-		stftime(tmbuf, (sizeof tmbuf),
-			"%Y-%m-%d %H:%M:%S",
-			now_tm);
-		snprintf(buf, sizeof buf, "%s.%06d >>",
-			tmbuf, log->entries[i].time.tv_usec);
-#endif
-	  	printf("%d: %s: %s\n", level,
-			buf, log->entries[i].log_str);		
-
+		snprintf_log_entry((char*) str, log, i); 
+		printf("%s", str);
 	}
 
 }
@@ -103,11 +146,32 @@ log_init(log_t **pp_log, int log_id, char *name)
 	return SUCCESS;
 }
 
-void 
-log_hello()
+int 
+log_dump_to_file(log_t *log, int max_level, char *file_name)
 {
+	FILE * file;
+	char str[LOG_LEN_ENTRY];
+	int i;
 
-	printf("Hello\n");
+	file = fopen(file_name, "a");
+	
+	if (!file) {
+		log_add(log, LOG_ERROR, "Unable to open file"
+			" to dump logs\n"); 
+		return LOG_INVALID_ARG;	
+	}
+	
+	fprintf(file, "BEGIN--LOG::%s:%d\n\n\n\n", log->log_name,
+		log->log_id);
+	for (i = 0; i < log->num_entries; i++) {
+		if ((log->entries[i]).level > max_level) 
+			continue;
+		snprintf_log_entry((char *)str, log, i);
+		if (strlen(str) != fprintf(file, "%s", str))
+			return LOG_FILE_OVERFLOW;;
+	}
 
+	fprintf(file, "\n\n\n\nEND--LOG::%s:%d", log->log_name,
+		log->log_id);
+	fclose(file);
 }
-

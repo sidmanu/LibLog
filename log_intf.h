@@ -10,6 +10,7 @@ enum err {
 	SUCCESS = 0,
 	LOG_MALLOC_ERR,
 	LOG_INVALID_ARG,
+	LOG_FILE_OVERFLOW,
 	LOG_FULL
 }; 
 
@@ -37,7 +38,11 @@ typedef struct log_ {
 	long 	buf_len;	
 	struct log_entry_ entries[LOG_MAX_ENTRIES]; 
 } log_t;
-/* Public API */
+
+/**************************************************
+ * Public API 
+***************************************************/
+
 
 int log_init(log_t **log, int log_id, char *name);
 
@@ -45,5 +50,8 @@ int log_add(log_t *log, int level, char *str);
 
 void log_print_all(log_t *log, int level);
 
-void log_hello();
-	
+/* (LOG_CRITICAL to max_level) 
+ * errors will only (and not beyond) be dumped 
+ */
+int log_dump_to_file(log_t *log, int max_level,
+		char *file_name);	
